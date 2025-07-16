@@ -1,0 +1,27 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "livewire-backend"
+source = "backend"
+
+[services.variables]
+FLASK_ENV = "production"
+FLASK_DEBUG = "False"
+HOST = "0.0.0.0"
+PORT = "5000"
+
+[[services]]
+name = "livewire-frontend"
+source = "frontend"
+
+[services.variables]
+VITE_API_URL = "${{livewire-backend.RAILWAY_PUBLIC_DOMAIN}}"
+VITE_API_BASE_URL = "${{livewire-backend.RAILWAY_PUBLIC_DOMAIN}}/api"
+
