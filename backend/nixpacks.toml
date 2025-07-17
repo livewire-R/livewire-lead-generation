@@ -1,2 +1,12 @@
+ Alternative to Dockerfile - use this if Docker approach fails
+[phases.setup]
+nixPkgs = ["python39", "gcc", "postgresql"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["echo 'Build phase complete'"]
+
 [start]
-cmd = "pip install -r requirements.txt && gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 src.main:app"
+cmd = "python -m gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 src.main:app"

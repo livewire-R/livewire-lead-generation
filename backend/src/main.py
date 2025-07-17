@@ -8,21 +8,16 @@ from flask_sqlalchemy import SQLAlchemy
 # Add the src directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Import models and services
-from models.client import Client, client_db
-from models.lead import Lead
-from models.campaign import Campaign, CampaignExecution
-from routes.auth import auth_bp
-from routes.leads import leads_bp
-from routes.campaigns import campaigns_bp
-from services.campaign_scheduler import init_campaign_scheduler
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def create_app():
     """Create and configure the Flask application"""
     app = Flask(__name__)
     
     # Configuration
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'leed-io-production-secret-2025-change-this')
     
     # Database configuration
     database_url = os.getenv('DATABASE_URL')
@@ -31,14 +26,18 @@ def create_app():
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        logger.info("Using PostgreSQL database from Railway")
     else:
         # Fallback for local development
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///leed_io.db'
+        logger.info("Using SQLite database for local development")
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
+        'pool_timeout': 20,
+        'max_overflow': 0
     }
     
     # CORS configuration
@@ -46,28 +45,43 @@ def create_app():
     CORS(app, origins=cors_origins, supports_credentials=True)
     
     # Initialize database
+    from models.client import client_db
     client_db.init_app(app)
     
-    # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api')
-    app.register_blueprint(leads_bp, url_prefix='/api')
-    app.register_blueprint(campaigns_bp, url_prefix='/api')
+    # Import and register blueprints
+    try:
+        from routes.auth import auth_bp
+        from routes.leads import leads_bp
+        from routes.campaigns import campaigns_bp
+        
+        app.register_blueprint(auth_bp, url_prefix='/api')
+        app.register_blueprint(leads_bp, url_prefix='/api')
+        app.register_blueprint(campaigns_bp, url_prefix='/api')
+        logger.info("Blueprints registered successfully")
+    except ImportError as e:
+        logger.warning(f"Could not import blueprints: {e}")
     
     # Initialize campaign scheduler
     try:
+        from services.campaign_scheduler import init_campaign_scheduler
         init_campaign_scheduler(app)
+        logger.info("Campaign scheduler initialized")
     except Exception as e:
-        app.logger.warning(f"Campaign scheduler initialization failed: {e}")
+        logger.warning(f"Campaign scheduler initialization failed: {e}")
     
     # Health check endpoint
     @app.route('/api/health')
     def health_check():
         """Health check endpoint for Railway deployment"""
         try:
-            # Test database connection
-            client_db.session.execute('SELECT 1')
-            db_status = "healthy"
+            # Test database connection only if DATABASE_URL exists
+            if os.getenv('DATABASE_URL'):
+                client_db.session.execute('SELECT 1')
+                db_status = "healthy"
+            else:
+                db_status = "no database configured"
         except Exception as e:
+            logger.error(f"Database health check failed: {e}")
             db_status = f"unhealthy: {str(e)}"
             
         return jsonify({
@@ -75,7 +89,8 @@ def create_app():
             "service": "LEED.io Lead Generation API",
             "version": "1.0.0",
             "database": db_status,
-            "environment": os.getenv('FLASK_ENV', 'development')
+            "environment": os.getenv('FLASK_ENV', 'development'),
+            "port": os.getenv('PORT', 'not set')
         })
     
     # Root endpoint
@@ -94,13 +109,33 @@ def create_app():
             }
         })
     
+    # Debug endpoint (remove in production)
+    @app.route('/api/debug')
+    def debug_info():
+        """Debug endpoint to check environment"""
+        return jsonify({
+            "environment_variables": {
+                "DATABASE_URL": "***" if os.getenv('DATABASE_URL') else "MISSING",
+                "SECRET_KEY": "***" if os.getenv('SECRET_KEY') else "MISSING",
+                "PORT": os.getenv('PORT', 'MISSING'),
+                "FLASK_ENV": os.getenv('FLASK_ENV', 'MISSING'),
+                "PYTHONPATH": os.getenv('PYTHONPATH', 'MISSING')
+            },
+            "python_path": sys.path[:3],  # First 3 entries
+            "working_directory": os.getcwd(),
+            "app_config": {
+                "SECRET_KEY": "***" if app.config.get('SECRET_KEY') else "MISSING",
+                "SQLALCHEMY_DATABASE_URI": "***" if app.config.get('SQLALCHEMY_DATABASE_URI') else "MISSING"
+            }
+        })
+    
     # Create tables
     with app.app_context():
         try:
             client_db.create_all()
-            app.logger.info("Database tables created successfully")
+            logger.info("Database tables created successfully")
         except Exception as e:
-            app.logger.error(f"Database initialization failed: {e}")
+            logger.error(f"Database initialization failed: {e}")
     
     return app
 
@@ -110,5 +145,5 @@ app = create_app()
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV') == 'development'
+    logger.info(f"Starting LEED.io API on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug)
-

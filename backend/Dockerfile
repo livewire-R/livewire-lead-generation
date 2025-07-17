@@ -1,4 +1,4 @@
-# Backend Dockerfile
+# LEED.io Backend Dockerfile - Railway Optimized
 FROM python:3.9-slim
 
 # Set working directory
@@ -19,8 +19,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
+# Set Python path
+ENV PYTHONPATH=/app/src
+
+# Expose port (Railway sets this automatically)
 EXPOSE $PORT
 
-# Start command
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "4", "--timeout", "120", "src.main:app"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:$PORT/api/health || exit 1
+
+# Start command - using python -m for better module resolution
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "1", "--timeout", "120", "--worker-class", "sync", "src.main:app"]
+
