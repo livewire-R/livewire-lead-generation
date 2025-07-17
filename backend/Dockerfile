@@ -1,4 +1,4 @@
-# LEED.io Backend Dockerfile
+# Backend Dockerfile
 FROM python:3.9-slim
 
 # Set working directory
