@@ -1,3 +1,6 @@
+# Complete LEED.io Backend Requirements
+# Replace backend/requirements.txt with this content:
+
 # Core Flask Framework
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
