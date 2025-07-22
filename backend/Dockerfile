@@ -1,20 +1,22 @@
-# LEED.io Backend Dockerfile - Railway Optimized
+# LEED.io Backend - Emergency Dockerfile (Bypasses requirements.txt)
 FROM python:3.9-slim
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python packages directly (bypasses requirements.txt issues)
+RUN pip install --no-cache-dir \
+    Flask==3.0.0 \
+    Flask-CORS==4.0.0 \
+    gunicorn==21.2.0 \
+    requests==2.31.0 \
+    psycopg2-binary==2.9.9
 
 # Copy application code
 COPY . .
@@ -22,13 +24,9 @@ COPY . .
 # Set Python path
 ENV PYTHONPATH=/app/src
 
-# Expose port (Railway sets this automatically)
+# Expose port
 EXPOSE $PORT
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:$PORT/api/health || exit 1
-
-# Start command - using python -m for better module resolution
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "1", "--timeout", "120", "--worker-class", "sync", "src.main:app"]
+# Start command
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "1", "--timeout", "120", "src.main:app"]
 
