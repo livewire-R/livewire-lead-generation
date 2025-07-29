@@ -50,9 +50,9 @@ def create_app():
     
     # Import and register blueprints
     try:
-        from routes.auth import auth_bp
-        from routes.leads import leads_bp
-        from routes.campaigns import campaigns_bp
+        from src.routes.auth import auth_bp
+        from src.routes.leads import leads_bp
+        from src.routes.campaigns import campaigns_bp
         
         app.register_blueprint(auth_bp, url_prefix="/api")
         app.register_blueprint(leads_bp, url_prefix="/api")
@@ -63,7 +63,7 @@ def create_app():
     
     # Initialize campaign scheduler
     try:
-        from services.campaign_scheduler import init_campaign_scheduler
+        from src.services.campaign_scheduler import init_campaign_scheduler
         init_campaign_scheduler(app)
         logger.info("Campaign scheduler initialized")
     except Exception as e:
@@ -132,8 +132,12 @@ def create_app():
     # Create tables
     with app.app_context():
         try:
-            db.create_all()
-            logger.info("Database tables created successfully")
+              # Check if tables already exist before creating
+            if not db.engine.dialect.has_table(db.engine, "clients"):
+                db.create_all()
+                logger.info("Database tables created successfully")
+            else:
+                logger.info("Database tables already exist, skipping creation")
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
     
