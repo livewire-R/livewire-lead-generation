@@ -4,6 +4,7 @@ import logging
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 
 # Add the src directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -133,7 +134,7 @@ def create_app():
     with app.app_context():
         try:
               # Check if tables already exist before creating
-            if not db.engine.dialect.has_table(db.engine, "clients"):
+            if not inspect(db.engine).has_table("clients"):
                 db.create_all()
                 logger.info("Database tables created successfully")
             else:
