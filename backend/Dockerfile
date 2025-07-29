@@ -1,10 +1,6 @@
-# -------------------------------------------------------------------------------------------------
-# LEED.io Backend · Dockerfile (Repository Root Version)
-# -------------------------------------------------------------------------------------------------
-
 FROM python:3.11-slim AS base
 
-# System packages
+# Install dependencies for psycopg2 and general build
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
         gcc \
@@ -14,21 +10,21 @@ RUN apt-get update -y && \
 
 WORKDIR /app
 
-# Copy requirements from backend folder
+# Copy requirements
 COPY backend/requirements.txt ./
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code from backend/src to /app/src
+# Copy app code
 COPY backend/src ./src
 
-# Environment configuration
+# Set env vars
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
 EXPOSE 8080
 
-# Start command (using src.main since we copied src to /app/src)
+# Use shell to expand $PORT
 CMD ["/bin/sh", "-c", "gunicorn -w 4 -b 0.0.0.0:${PORT} src.main:app"]
