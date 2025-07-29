@@ -1,325 +1,461 @@
-from flask_sqlalchemy import SQLAlchemy
+from flask import Blueprint, request, jsonify, current_app
+from flask_cors import cross_origin
+import jwt
+from functools import wraps
+import logging
 from datetime import datetime
-import uuid
-import json
 
-db = SQLAlchemy()
+from src.models.lead import Lead, Campaign, db
+from src.models.client import Client
+from src.services.lead_generator import LeadCriteria, LeadGenerationService
 
-class Lead(db.Model):
-    """Lead model for storing generated lead data"""
-    
-    __tablename__ = 'leads'
-    
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False, index=True)
-    campaign_id = db.Column(db.String(36), db.ForeignKey('campaigns.id'), nullable=True, index=True)
-    
-    # Lead information
-    name = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), nullable=False, index=True)
-    phone = db.Column(db.String(50))
-    company = db.Column(db.String(255))
-    title = db.Column(db.String(255))
-    industry = db.Column(db.String(100))
-    location = db.Column(db.String(255))
-    
-    # LinkedIn information
-    linkedin_url = db.Column(db.String(500))
-    linkedin_profile_data = db.Column(db.Text)  # JSON string
-    
-    # Lead scoring and quality
-    score = db.Column(db.Integer, default=0)  # 0-100 lead quality score
-    score_breakdown = db.Column(db.Text)  # JSON string with scoring details
-    
-    # Email verification (Hunter.io)
-    email_verified = db.Column(db.Boolean, default=False)
-    email_verification_data = db.Column(db.Text)  # JSON string
-    
-    # Lead status and tracking
-    status = db.Column(db.String(20), default='new')  # new, contacted, qualified, converted, rejected
-    source = db.Column(db.String(50), default='apollo')  # apollo, hunter, linkedin, manual
-    
-    # Metadata and raw data
-    raw_data = db.Column(db.Text)  # JSON string with original API response
-    lead_metadata = db.Column(db.Text)  # JSON string with additional metadata
-    
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    contacted_at = db.Column(db.DateTime)
-    
-    # Indexes for efficient querying
-    __table_args__ = (
-        db.Index('idx_client_created', 'client_id', 'created_at'),
-        db.Index('idx_client_score', 'client_id', 'score'),
-        db.Index('idx_client_status', 'client_id', 'status'),
-        db.Index('idx_email_client', 'email', 'client_id'),
-    )
-    
-    def set_linkedin_profile_data(self, data):
-        """Set LinkedIn profile data as JSON"""
-        self.linkedin_profile_data = json.dumps(data) if data else None
-    
-    def get_linkedin_profile_data(self):
-        """Get LinkedIn profile data from JSON"""
-        return json.loads(self.linkedin_profile_data) if self.linkedin_profile_data else {}
-    
-    def set_score_breakdown(self, breakdown):
-        """Set score breakdown as JSON"""
-        self.score_breakdown = json.dumps(breakdown) if breakdown else None
-    
-    def get_score_breakdown(self):
-        """Get score breakdown from JSON"""
-        return json.loads(self.score_breakdown) if self.score_breakdown else {}
-    
-    def set_email_verification_data(self, data):
-        """Set email verification data as JSON"""
-        self.email_verification_data = json.dumps(data) if data else None
-    
-    def get_email_verification_data(self):
-        """Get email verification data from JSON"""
-        return json.loads(self.email_verification_data) if self.email_verification_data else {}
-    
-    def set_raw_data(self, data):
-        """Set raw API data as JSON"""
-        self.raw_data = json.dumps(data) if data else None
-    
-    def get_raw_data(self):
-        """Get raw API data from JSON"""
-        return json.loads(self.raw_data) if self.raw_data else {}
-    
-    def set_metadata(self, data):
-        """Set metadata as JSON"""
-        self.lead_metadata = json.dumps(data) if data else None
-    
-    def get_metadata(self):
-        """Get metadata from JSON"""
-        return json.loads(self.lead_metadata) if self.lead_metadata else {}
-    
-    def update_status(self, new_status, notes=None):
-        """Update lead status with optional notes"""
-        self.status = new_status
-        self.updated_at = datetime.utcnow()
+logger = logging.getLogger(__name__)
+
+leads_bp = Blueprint("leads", __name__)
+
+def token_required(f):
+    """Decorator to require JWT token for protected routes"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get("Authorization")
         
-        if new_status == 'contacted':
-            self.contacted_at = datetime.utcnow()
+        if not token:
+            return jsonify({"error": "Token is missing"}), 401
         
-        if notes:
-            metadata = self.get_metadata()
-            if 'status_history' not in metadata:
-                metadata['status_history'] = []
+        try:
+            if token.startswith("Bearer "):
+                token = token[7:]
             
-            metadata['status_history'].append({
-                'status': new_status,
-                'timestamp': datetime.utcnow().isoformat(),
-                'notes': notes
-            })
+            data = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
+            current_client_id = data["client_id"]
             
-            self.set_metadata(metadata)
-        
-        db.session.commit()
-    
-    def calculate_quality_score(self):
-        """Calculate and update lead quality score"""
-        score = 0
-        breakdown = {}
-        
-        # Email presence and verification
-        if self.email:
-            score += 20
-            breakdown['email_present'] = 20
+            # Verify client exists and is active
+            client = Client.query.get(current_client_id)
+            if not client or client.status != "active":
+                return jsonify({"error": "Invalid or inactive client"}), 401
             
-            if self.email_verified:
-                score += 15
-                breakdown['email_verified'] = 15
-        
-        # Phone number presence
-        if self.phone:
-            score += 15
-            breakdown['phone_present'] = 15
-        
-        # LinkedIn profile
-        if self.linkedin_url:
-            score += 15
-            breakdown['linkedin_present'] = 15
-        
-        # Company information
-        if self.company:
-            score += 10
-            breakdown['company_present'] = 10
-        
-        # Title information
-        if self.title:
-            score += 10
-            breakdown['title_present'] = 10
-        
-        # Industry match (if specified in campaign)
-        if self.industry:
-            score += 5
-            breakdown['industry_present'] = 5
-        
-        # Location information
-        if self.location:
-            score += 5
-            breakdown['location_present'] = 5
-        
-        # Email verification quality
-        email_verification = self.get_email_verification_data()
-        if email_verification.get('result') == 'deliverable':
-            score += 5
-            breakdown['email_deliverable'] = 5
-        
-        self.score = min(score, 100)
-        self.set_score_breakdown(breakdown)
-        
-        return self.score
+            return f(current_client_id, *args, **kwargs)
+            
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token has expired"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Invalid token"}), 401
     
-    def to_dict(self, include_raw_data=False):
-        """Convert to dictionary for JSON serialization"""
-        data = {
-            'id': self.id,
-            'client_id': self.client_id,
-            'campaign_id': self.campaign_id,
-            'name': self.name,
-            'email': self.email,
-            'phone': self.phone,
-            'company': self.company,
-            'title': self.title,
-            'industry': self.industry,
-            'location': self.location,
-            'linkedin_url': self.linkedin_url,
-            'score': self.score,
-            'score_breakdown': self.get_score_breakdown(),
-            'email_verified': self.email_verified,
-            'email_verification_data': self.get_email_verification_data(),
-            'status': self.status,
-            'source': self.source,
-            'metadata': self.get_metadata(),
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'contacted_at': self.contacted_at.isoformat() if self.contacted_at else None
-        }
-        
-        if include_raw_data:
-            data['raw_data'] = self.get_raw_data()
-            data['linkedin_profile_data'] = self.get_linkedin_profile_data()
-        
-        return data
-    
-    def __repr__(self):
-        return f'<Lead {self.name} ({self.email})>'
+    return decorated
 
+@leads_bp.route("/generate", methods=["POST"])
+@cross_origin()
+@token_required
+def generate_leads(current_client_id):
+    """
+    Generate leads based on criteria
+    
+    Expected JSON payload:
+    {
+        "keywords": "CEO marketing director",
+        "industries": ["Technology", "Healthcare"],
+        "locations": ["Sydney", "Melbourne"],
+        "titles": ["CEO", "Marketing Director"],
+        "company_sizes": ["medium", "large"],
+        "min_score": 70,
+        "max_results": 50,
+        "verify_emails": true,
+        "enrich_linkedin": true,
+        "campaign_id": "optional-campaign-id"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Create lead criteria from request
+        criteria = LeadCriteria(
+            keywords=data.get("keywords", ""),
+            industries=data.get("industries", []),
+            locations=data.get("locations", ["Australia"]),  # Default to Australia
+            titles=data.get("titles", []),
+            company_sizes=data.get("company_sizes", []),
+            min_score=data.get("min_score", 60),
+            max_results=min(data.get("max_results", 100), 500),  # Cap at 500
+            verify_emails=data.get("verify_emails", True),
+            enrich_linkedin=data.get("enrich_linkedin", True)
+        )
+        
+        campaign_id = data.get("campaign_id")
+        
+        # Generate leads
+        lead_service = LeadGenerationService()
+        result = lead_service.generate_leads(current_client_id, criteria, campaign_id)
+        
+        if result["success"]:
+            logger.info(f"Generated {result["leads_generated"]} leads for client {current_client_id}")
+            return jsonify(result), 200
+        else:
+            logger.error(f"Lead generation failed for client {current_client_id}: {result.get("error")}")
+            return jsonify(result), 400
+            
+    except Exception as e:
+        logger.error(f"Lead generation endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
 
-class Campaign(db.Model):
-    """Campaign model for organizing lead generation efforts"""
-    
-    __tablename__ = 'campaigns'
-    
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False, index=True)
-    
-    # Campaign details
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    
-    # Search criteria
-    keywords = db.Column(db.String(500))
-    industries = db.Column(db.Text)  # JSON array
-    locations = db.Column(db.Text)  # JSON array
-    titles = db.Column(db.Text)  # JSON array
-    company_sizes = db.Column(db.Text)  # JSON array
-    
-    # Campaign settings
-    target_count = db.Column(db.Integer, default=100)
-    min_score = db.Column(db.Integer, default=60)
-    
-    # Campaign status
-    status = db.Column(db.String(20), default='draft')  # draft, active, paused, completed
-    
-    # Results tracking
-    leads_generated = db.Column(db.Integer, default=0)
-    leads_qualified = db.Column(db.Integer, default=0)
-    leads_contacted = db.Column(db.Integer, default=0)
-    leads_converted = db.Column(db.Integer, default=0)
-    
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    started_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
-    
-    # Relationships
-    leads = db.relationship('Lead', backref='campaign', lazy=True)
-    
-    def set_industries(self, industries):
-        """Set industries as JSON array"""
-        self.industries = json.dumps(industries) if industries else None
-    
-    def get_industries(self):
-        """Get industries from JSON"""
-        return json.loads(self.industries) if self.industries else []
-    
-    def set_locations(self, locations):
-        """Set locations as JSON array"""
-        self.locations = json.dumps(locations) if locations else None
-    
-    def get_locations(self):
-        """Get locations from JSON"""
-        return json.loads(self.locations) if self.locations else []
-    
-    def set_titles(self, titles):
-        """Set titles as JSON array"""
-        self.titles = json.dumps(titles) if titles else None
-    
-    def get_titles(self):
-        """Get titles from JSON"""
-        return json.loads(self.titles) if self.titles else []
-    
-    def set_company_sizes(self, sizes):
-        """Set company sizes as JSON array"""
-        self.company_sizes = json.dumps(sizes) if sizes else None
-    
-    def get_company_sizes(self):
-        """Get company sizes from JSON"""
-        return json.loads(self.company_sizes) if self.company_sizes else []
-    
-    def update_stats(self):
-        """Update campaign statistics"""
-        leads = Lead.query.filter_by(campaign_id=self.id).all()
+@leads_bp.route("/suggestions", methods=["POST"])
+@cross_origin()
+@token_required
+def get_lead_suggestions(current_client_id):
+    """
+    Get lead suggestions for preview without generating actual leads
+    """
+    try:
+        data = request.get_json()
         
-        self.leads_generated = len(leads)
-        self.leads_qualified = len([l for l in leads if l.score >= self.min_score])
-        self.leads_contacted = len([l for l in leads if l.status == 'contacted'])
-        self.leads_converted = len([l for l in leads if l.status == 'converted'])
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
         
-        self.updated_at = datetime.utcnow()
-        db.session.commit()
+        # Create criteria for suggestions
+        criteria = LeadCriteria(
+            keywords=data.get("keywords", ""),
+            industries=data.get("industries", []),
+            locations=data.get("locations", ["Australia"]),
+            titles=data.get("titles", []),
+            company_sizes=data.get("company_sizes", []),
+            min_score=data.get("min_score", 60)
+        )
+        
+        # Get suggestions
+        lead_service = LeadGenerationService()
+        result = lead_service.get_lead_suggestions(current_client_id, criteria)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Lead suggestions endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@leads_bp.route("/", methods=["GET"])
+@cross_origin()
+@token_required
+def get_leads(current_client_id):
+    """
+    Get leads for current client with filtering and pagination
     
-    def to_dict(self):
-        """Convert to dictionary for JSON serialization"""
-        return {
-            'id': self.id,
-            'client_id': self.client_id,
-            'name': self.name,
-            'description': self.description,
-            'keywords': self.keywords,
-            'industries': self.get_industries(),
-            'locations': self.get_locations(),
-            'titles': self.get_titles(),
-            'company_sizes': self.get_company_sizes(),
-            'target_count': self.target_count,
-            'min_score': self.min_score,
-            'status': self.status,
-            'leads_generated': self.leads_generated,
-            'leads_qualified': self.leads_qualified,
-            'leads_contacted': self.leads_contacted,
-            'leads_converted': self.leads_converted,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'started_at': self.started_at.isoformat() if self.started_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None
-        }
+    Query parameters:
+    - page: Page number (default: 1)
+    - per_page: Results per page (default: 25, max: 100)
+    - status: Filter by status (new, contacted, qualified, converted, rejected)
+    - min_score: Minimum lead score
+    - campaign_id: Filter by campaign
+    - search: Search in name, email, company
+    - sort_by: Sort field (score, created_at, name, company)
+    - sort_order: Sort order (asc, desc)
+    """
+    try:
+        # Parse query parameters
+        page = int(request.args.get("page", 1))
+        per_page = min(int(request.args.get("per_page", 25)), 100)
+        status = request.args.get("status")
+        min_score = request.args.get("min_score", type=int)
+        campaign_id = request.args.get("campaign_id")
+        search = request.args.get("search", "").strip()
+        sort_by = request.args.get("sort_by", "created_at")
+        sort_order = request.args.get("sort_order", "desc")
+        
+        # Build query
+        query = Lead.query.filter_by(client_id=current_client_id)
+        
+        # Apply filters
+        if status:
+            query = query.filter(Lead.status == status)
+        
+        if min_score:
+            query = query.filter(Lead.score >= min_score)
+        
+        if campaign_id:
+            query = query.filter(Lead.campaign_id == campaign_id)
+        
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    Lead.name.ilike(search_term),
+                    Lead.email.ilike(search_term),
+                    Lead.company.ilike(search_term)
+                )
+            )
+        
+        # Apply sorting
+        if sort_by == "score":
+            order_column = Lead.score
+        elif sort_by == "name":
+            order_column = Lead.name
+        elif sort_by == "company":
+            order_column = Lead.company
+        else:
+            order_column = Lead.created_at
+        
+        if sort_order == "asc":
+            query = query.order_by(order_column.asc())
+        else:
+            query = query.order_by(order_column.desc())
+        
+        # Paginate
+        pagination = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        leads = pagination.items
+        
+        return jsonify({
+            "success": True,
+            "leads": [lead.to_dict() for lead in leads],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "has_next": pagination.has_next,
+                "has_prev": pagination.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get leads endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@leads_bp.route("/<lead_id>", methods=["GET"])
+@cross_origin()
+@token_required
+def get_lead(current_client_id, lead_id):
+    """Get single lead by ID"""
+    try:
+        lead = Lead.query.filter_by(id=lead_id, client_id=current_client_id).first()
+        
+        if not lead:
+            return jsonify({"error": "Lead not found"}), 404
+        
+        return jsonify({
+            "success": True,
+            "lead": lead.to_dict(include_raw_data=True)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get lead endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@leads_bp.route("/<lead_id>/status", methods=["PUT"])
+@cross_origin()
+@token_required
+def update_lead_status(current_client_id, lead_id):
+    """
+    Update lead status
     
-    def __repr__(self):
-        return f'<Campaign {self.name}>'
+    Expected JSON payload:
+    {
+        "status": "contacted",
+        "notes": "Called and left voicemail"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or "status" not in data:
+            return jsonify({"error": "Status is required"}), 400
+        
+        lead = Lead.query.filter_by(id=lead_id, client_id=current_client_id).first()
+        
+        if not lead:
+            return jsonify({"error": "Lead not found"}), 404
+        
+        valid_statuses = ["new", "contacted", "qualified", "converted", "rejected"]
+        new_status = data["status"]
+        
+        if new_status not in valid_statuses:
+            return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+        
+        notes = data.get("notes", "")
+        lead.update_status(new_status, notes)
+        
+        return jsonify({
+            "success": True,
+            "lead": lead.to_dict(),
+            "message": f"Lead status updated to {new_status}"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Update lead status endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@leads_bp.route("/stats", methods=["GET"])
+@cross_origin()
+@token_required
+def get_lead_stats(current_client_id):
+    """
+    Get lead statistics for current client"""
+    try:
+        # Get basic counts
+        total_leads = Lead.query.filter_by(client_id=current_client_id).count()
+        
+        # Status breakdown
+        status_stats = db.session.query(
+            Lead.status,
+            db.func.count(Lead.id).label("count")
+        ).filter_by(client_id=current_client_id).group_by(Lead.status).all()
+        
+        status_breakdown = {status: count for status, count in status_stats}
+        
+        # Score distribution
+        score_ranges = [
+            (90, 100, "excellent"),
+            (80, 89, "very_good"),
+            (70, 79, "good"),
+            (60, 69, "fair"),
+            (0, 59, "poor")
+        ]
+        
+        score_breakdown = {}
+        for min_score, max_score, label in score_ranges:
+            count = Lead.query.filter_by(client_id=current_client_id).filter(
+                Lead.score >= min_score,
+                Lead.score <= max_score
+            ).count()
+            score_breakdown[label] = count
+        
+        # Recent activity (last 30 days)
+        from datetime import datetime, timedelta
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        recent_leads = Lead.query.filter_by(client_id=current_client_id).filter(
+            Lead.created_at >= thirty_days_ago
+        ).count()
+        
+        # Average score
+        avg_score_result = db.session.query(
+            db.func.avg(Lead.score)
+        ).filter_by(client_id=current_client_id).scalar()
+        
+        avg_score = round(avg_score_result, 1) if avg_score_result else 0
+        
+        # Top sources
+        source_stats = db.session.query(
+            Lead.source,
+            db.func.count(Lead.id).label("count")
+        ).filter_by(client_id=current_client_id).group_by(Lead.source).all()
+        
+        source_breakdown = {source: count for source, count in source_stats}
+        
+        return jsonify({
+            "success": True,
+            "stats": {
+                "total_leads": total_leads,
+                "recent_leads": recent_leads,
+                "average_score": avg_score,
+                "status_breakdown": status_breakdown,
+                "score_breakdown": score_breakdown,
+                "source_breakdown": source_breakdown
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Get lead stats endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
+
+@leads_bp.route("/export", methods=["GET"])
+@cross_origin()
+@token_required
+def export_leads(current_client_id):
+    """
+    Export leads as CSV"""
+    try:
+        import csv
+        import io
+        
+        # Get leads with same filtering as get_leads
+        query = Lead.query.filter_by(client_id=current_client_id)
+        
+        # Apply filters from query parameters
+        status = request.args.get("status")
+        min_score = request.args.get("min_score", type=int)
+        campaign_id = request.args.get("campaign_id")
+        
+        if status:
+            query = query.filter(Lead.status == status)
+        if min_score:
+            query = query.filter(Lead.score >= min_score)
+        if campaign_id:
+            query = query.filter(Lead.campaign_id == campaign_id)
+        
+        leads = query.order_by(Lead.created_at.desc()).all()
+        
+        # Create CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            "Name", "Email", "Phone", "Company", "Title", "Industry",
+            "Location", "LinkedIn URL", "Score", "Status", "Email Verified",
+            "Source", "Created At"
+        ])
+        
+        # Write data
+        for lead in leads:
+            writer.writerow([
+                lead.name,
+                lead.email,
+                lead.phone,
+                lead.company,
+                lead.title,
+                lead.industry,
+                lead.location,
+                lead.linkedin_url,
+                lead.score,
+                lead.status,
+                "Yes" if lead.email_verified else "No",
+                lead.source,
+                lead.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            ])
+        
+        output.seek(0)
+        csv_data = output.getvalue()
+        
+        return jsonify({
+            "success": True,
+            "csv_data": csv_data,
+            "filename": f"livewire_leads_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Export leads endpoint error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Internal server error",
+            "message": str(e)
+        }), 500
 
