@@ -450,6 +450,8 @@ def get_lead_generation_service() -> LeadGenerationService:
     """Get or create lead generation service instance"""
     global lead_generation_service
     if lead_generation_service is None:
-        lead_generation_service = LeadGenerationService()
+
+# Alias for backward compatibility with existing imports
+LeadGenerator = LeadGenerationService
     return lead_generation_service
 
