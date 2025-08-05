@@ -6,7 +6,7 @@ class Lead(db.Model):
     __tablename__ = 'leads'
     
     id = db.Column(db.Integer, primary_key=True)
-    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False)
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=True)
     
     # Lead information
@@ -33,8 +33,8 @@ class Lead(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    client = db.relationship('Client', backref='leads')
+    # Relationships - backref is defined in Client model
+    # client relationship is defined via backref in Client model
     campaign = db.relationship('Campaign', backref='leads')
     
     def __repr__(self):

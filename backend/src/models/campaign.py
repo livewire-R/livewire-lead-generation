@@ -45,8 +45,8 @@ class Campaign(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    client = db.relationship('Client', backref=db.backref('campaigns', lazy=True))
+    # Relationships - backref is defined in Client model
+    # client relationship is defined via backref in Client model
     executions = db.relationship('CampaignExecution', backref='campaign', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):

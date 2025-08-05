@@ -1,4 +1,5 @@
 import os
+import os
 import sys
 import logging
 from flask import Flask, jsonify, request
@@ -54,10 +55,12 @@ def create_app():
         from routes.auth import auth_bp
         from routes.leads import leads_bp
         from routes.campaigns import campaigns_bp
+        from routes.admin import admin_bp
         
         app.register_blueprint(auth_bp, url_prefix="/api")
         app.register_blueprint(leads_bp, url_prefix="/api")
         app.register_blueprint(campaigns_bp, url_prefix="/api")
+        app.register_blueprint(admin_bp, url_prefix="/api")
         logger.info("Blueprints registered successfully")
     except ImportError as e:
         logger.warning(f"Could not import blueprints: {e}")
@@ -88,7 +91,7 @@ def create_app():
             
         return jsonify({
             "status": "healthy",
-            "service": "LEED.io Lead Generation API",
+            "service": "SalesFuel.au Lead Generation API",
             "version": "1.0.0",
             "database": db_status,
             "environment": os.getenv("FLASK_ENV", "development"),
@@ -100,14 +103,15 @@ def create_app():
     def root():
         """Root endpoint"""
         return jsonify({
-            "message": "LEED.io Lead Generation API",
+            "message": "SalesFuel.au Lead Generation API",
             "version": "1.0.0",
             "status": "running",
             "endpoints": {
                 "health": "/api/health",
                 "auth": "/api/auth/*",
                 "leads": "/api/leads/*",
-                "campaigns": "/api/campaigns/*"
+                "campaigns": "/api/campaigns/*",
+                "admin": "/api/admin/*"
             }
         })
     
@@ -134,8 +138,13 @@ def create_app():
     # Create tables
     with app.app_context():
         try:
-              # Check if tables already exist before creating
-            if not inspect(db.engine).has_table("clients"):
+            # Import all models to ensure they're registered
+            from models.lead_model import Lead
+            from models.campaign import Campaign
+            
+            # Check if tables already exist before creating
+            inspector = inspect(db.engine)
+            if not inspector.has_table("clients"):
                 db.create_all()
                 logger.info("Database tables created successfully")
             else:

@@ -2,7 +2,7 @@
 
 class ApiService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'https://e5h6i7cddv5y.manus.space/api';
   }
 
   // Helper method to get auth token
@@ -286,4 +286,5 @@ class ApiService {
 // Create and export a singleton instance
 const apiService = new ApiService();
 export default apiService;
+export { ApiService };
 
