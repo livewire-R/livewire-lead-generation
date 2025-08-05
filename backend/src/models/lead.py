@@ -93,7 +93,7 @@ def generate_leads(current_client_id):
             logger.info(f"Generated {result['leads_generated']} leads for client {current_client_id}")
             return jsonify(result), 200
         else:
-            logger.error(f"Lead generation failed for client {current_client_id}: {result.get("error")}")
+            logger.error(f"Lead generation failed for client {current_client_id}: {result.get('error')}")
             return jsonify(result), 400
             
     except Exception as e:
@@ -448,7 +448,7 @@ def export_leads(current_client_id):
         return jsonify({
             "success": True,
             "csv_data": csv_data,
-            "filename": f"livewire_leads_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"
+            "filename": f"livewire_leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         }), 200
         
     except Exception as e:
