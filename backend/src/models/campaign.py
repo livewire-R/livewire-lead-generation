@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import json
 import uuid
 
-from .client import db
+from models.client import db
 
 class Campaign(db.Model):
     """Campaign model for automated lead generation"""

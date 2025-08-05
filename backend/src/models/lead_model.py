@@ -1,5 +1,5 @@
 from datetime import datetime
-from .client import db
+from models.client import db
 
 class Lead(db.Model):
     """Lead model for storing generated lead information"""

@@ -3,7 +3,7 @@ Database initialization routes for SalesFuel.au platform
 """
 
 from flask import Blueprint, jsonify, request
-from models.client import db, Client, Admin
+from models.client import db, Client, AdminUser
 from models.lead_model import Lead
 from models.campaign import Campaign
 from sqlalchemy import inspect
