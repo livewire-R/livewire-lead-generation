@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, Clock, Target, Building, MapPin, Users, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import apiService from '../services/api';
@@ -7,6 +7,7 @@ const OnboardingPage = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const [formData, setFormData] = useState({
     business_type: '',
     target_industries: [],
@@ -20,6 +21,34 @@ const OnboardingPage = () => {
     total_leads_limit: null,
     min_lead_score: 70
   });
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = apiService.getToken();
+      if (!token) {
+        navigate('/login', { 
+          state: { 
+            message: 'Please log in to access the onboarding process.' 
+          }
+        });
+        return;
+      }
+
+      try {
+        // Get user profile to personalize onboarding
+        const profileResponse = await apiService.getProfile();
+        if (profileResponse.success) {
+          setUserProfile(profileResponse.client);
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+        // Continue with onboarding even if profile fails
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const businessTypes = [
     { id: 'consultant', label: 'Business Consultant', icon: Building },
@@ -90,20 +119,54 @@ const OnboardingPage = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await apiService.createOnboardingCampaign(formData);
+      // Double-check authentication
+      const token = apiService.getToken();
+      if (!token) {
+        navigate('/login', { 
+          state: { 
+            message: 'Your session has expired. Please log in again.' 
+          }
+        });
+        return;
+      }
+
+      // Create campaign for authenticated user
+      const campaignData = {
+        name: `${businessTypes.find(t => t.id === formData.business_type)?.label || 'Lead Generation'} Campaign`,
+        description: `Automated lead generation campaign for ${formData.target_industries.join(', ')} industries`,
+        criteria: {
+          industries: formData.target_industries,
+          job_titles: formData.target_titles,
+          company_sizes: formData.company_sizes,
+          keywords: formData.target_keywords,
+          locations: formData.target_locations
+        },
+        frequency: formData.prospecting_frequency,
+        preferred_time: formData.preferred_time,
+        max_leads_per_run: formData.leads_per_run,
+        max_leads_total: formData.total_leads_limit,
+        min_lead_score: formData.min_lead_score
+      };
+
+      console.log('Creating campaign with data:', campaignData);
+      
+      const response = await apiService.createCampaign(campaignData);
+      
       if (response.success) {
         navigate('/dashboard', { 
           state: { 
-            message: 'Welcome to LEED.io! Your automated lead generation campaign has been set up successfully.',
-            campaignId: response.campaign.id
+            message: `Welcome ${userProfile?.contact_name || 'to LEED.io'}! Your lead generation campaign has been set up successfully.`,
+            campaignId: response.campaign.id,
+            isNewCampaign: true
           }
         });
       } else {
-        alert('Failed to create campaign: ' + response.error);
+        throw new Error(response.error || 'Failed to create campaign');
       }
+      
     } catch (error) {
-      console.error('Onboarding error:', error);
-      alert('Failed to complete onboarding. Please try again.');
+      console.error('Campaign creation error:', error);
+      alert(`Failed to create campaign: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -114,6 +177,11 @@ const OnboardingPage = () => {
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">What type of business are you in?</h2>
         <p className="text-gray-600">This helps us optimize lead generation for your industry</p>
+        {userProfile && (
+          <p className="text-sm text-blue-600 mt-2">
+            Setting up campaign for {userProfile.company_name}
+          </p>
+        )}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -366,6 +434,18 @@ const OnboardingPage = () => {
     }
   };
 
+  // Show loading if checking authentication
+  if (!userProfile && !apiService.getToken()) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="container mx-auto px-4 py-8">
@@ -380,7 +460,12 @@ const OnboardingPage = () => {
             </span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to LEED.io</h1>
-          <p className="text-gray-600">Let's set up your automated lead generation in just a few steps</p>
+          <p className="text-gray-600">Let's set up your automated lead generation campaign</p>
+          {userProfile && (
+            <p className="text-sm text-blue-600 mt-2">
+              Logged in as {userProfile.contact_name} ({userProfile.company_name})
+            </p>
+          )}
         </div>
 
         {/* Progress Bar */}
@@ -441,7 +526,7 @@ const OnboardingPage = () => {
                 disabled={!isStepValid()}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all ${
                   isStepValid()
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -451,17 +536,21 @@ const OnboardingPage = () => {
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={loading}
-                className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+                disabled={loading || !isStepValid()}
+                className={`flex items-center space-x-2 px-8 py-3 rounded-lg font-medium transition-all ${
+                  loading || !isStepValid()
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
+                }`}
               >
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Setting up...</span>
+                    <span>Creating Campaign...</span>
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="h-4 w-4" />
+                    <Zap className="h-4 w-4" />
                     <span>Start Lead Generation</span>
                   </>
                 )}
