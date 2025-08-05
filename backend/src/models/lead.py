@@ -90,7 +90,7 @@ def generate_leads(current_client_id):
         result = lead_service.generate_leads(current_client_id, criteria, campaign_id)
         
         if result["success"]:
-            logger.info(f"Generated {result["leads_generated"]} leads for client {current_client_id}")
+            logger.info(f"Generated {result['leads_generated']} leads for client {current_client_id}")
             return jsonify(result), 200
         else:
             logger.error(f"Lead generation failed for client {current_client_id}: {result.get("error")}")
