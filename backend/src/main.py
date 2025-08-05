@@ -57,12 +57,14 @@ def create_app():
         from routes.campaigns import campaigns_bp
         from routes.admin import admin_bp
         from routes.database import database_bp
+        from routes.debug import debug_bp
         
         app.register_blueprint(auth_bp, url_prefix="/api")
         app.register_blueprint(leads_bp, url_prefix="/api")
         app.register_blueprint(campaigns_bp, url_prefix="/api")
         app.register_blueprint(admin_bp, url_prefix="/api")
         app.register_blueprint(database_bp, url_prefix="/api")
+        app.register_blueprint(debug_bp, url_prefix="/api/debug")
         logger.info("Blueprints registered successfully")
     except ImportError as e:
         logger.warning(f"Could not import blueprints: {e}")
