@@ -51,9 +51,9 @@ def create_app():
     
     # Import and register blueprints
     try:
-        from src.routes.auth import auth_bp
-        from src.routes.leads import leads_bp
-        from src.routes.campaigns import campaigns_bp
+        from routes.auth import auth_bp
+        from routes.leads import leads_bp
+        from routes.campaigns import campaigns_bp
         
         app.register_blueprint(auth_bp, url_prefix="/api")
         app.register_blueprint(leads_bp, url_prefix="/api")
@@ -64,7 +64,7 @@ def create_app():
     
     # Initialize campaign scheduler
     try:
-        from src.services.campaign_scheduler import init_campaign_scheduler
+        from services.campaign_scheduler import init_campaign_scheduler
         init_campaign_scheduler(app)
         logger.info("Campaign scheduler initialized")
     except Exception as e:
