@@ -128,14 +128,26 @@ class LeadGenerationService:
     def _prepare_apollo_criteria(self, criteria: LeadCriteria) -> Dict:
         """Prepare search criteria for Apollo.io API"""
         apollo_criteria = {
-            'keywords': criteria.keywords,
-            'locations': criteria.locations or ['Australia'],  # Default to Australia as per project brief
-            'titles': criteria.titles or [],
-            'industries': criteria.industries or [],
             'per_page': min(criteria.max_results * 2, 100)  # Get more than needed for filtering
         }
         
-        # Map company sizes to Apollo format
+        # Add keywords if provided
+        if criteria.keywords and criteria.keywords.strip():
+            apollo_criteria['keywords'] = criteria.keywords.strip()
+        
+        # Add locations - default to Australia if none provided
+        locations = criteria.locations if criteria.locations else ['Australia']
+        apollo_criteria['locations'] = locations
+        
+        # Add titles if provided
+        if criteria.titles:
+            apollo_criteria['titles'] = criteria.titles
+        
+        # Add industries if provided  
+        if criteria.industries:
+            apollo_criteria['industries'] = criteria.industries
+        
+        # Map company sizes to Apollo format if provided
         if criteria.company_sizes:
             size_mapping = {
                 'startup': '1,10',

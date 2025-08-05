@@ -95,19 +95,36 @@ class ApolloAPIClient:
         Returns:
             List of processed lead dictionaries
         """
+        # Build payload with correct Apollo.io API format
         payload = {
-            'q_keywords': criteria.get('keywords', ''),
-            'person_locations': criteria.get('locations', ['Australia']),
-            'person_titles': criteria.get('titles', []),
-            'organization_locations': criteria.get('company_locations', ['Australia']),
-            'organization_industries': criteria.get('industries', []),
-            'organization_num_employees_ranges': criteria.get('company_sizes', []),
             'page': criteria.get('page', 1),
             'per_page': min(criteria.get('per_page', 25), 100)  # Apollo max is 100
         }
         
-        # Remove empty arrays to avoid API errors
-        payload = {k: v for k, v in payload.items() if v}
+        # Add optional search parameters only if they have values
+        keywords = criteria.get('keywords', '').strip()
+        if keywords:
+            payload['q_keywords'] = keywords
+        
+        locations = criteria.get('locations', [])
+        if locations and locations != ['']:
+            payload['person_locations'] = locations
+        
+        titles = criteria.get('titles', [])
+        if titles and titles != ['']:
+            payload['person_titles'] = titles
+        
+        company_locations = criteria.get('company_locations', [])
+        if company_locations and company_locations != ['']:
+            payload['organization_locations'] = company_locations
+        
+        industries = criteria.get('industries', [])
+        if industries and industries != ['']:
+            payload['organization_industries'] = industries
+        
+        company_sizes = criteria.get('company_sizes', [])
+        if company_sizes and company_sizes != ['']:
+            payload['organization_num_employees_ranges'] = company_sizes
         
         try:
             data = self._make_request('mixed_people/search', payload)
