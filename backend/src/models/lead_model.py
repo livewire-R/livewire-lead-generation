@@ -7,7 +7,7 @@ class Lead(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     client_id = db.Column(db.String(36), db.ForeignKey('clients.id'), nullable=False)
-    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=True)
+    campaign_id = db.Column(db.String(36), db.ForeignKey('campaigns.id'), nullable=True)
     
     # Lead information
     first_name = db.Column(db.String(100), nullable=False)
