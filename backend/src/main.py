@@ -77,7 +77,8 @@ def create_app():
         try:
             # Test database connection only if DATABASE_URL exists
             if os.getenv("DATABASE_URL"):
-                db.session.execute("SELECT 1")
+                from sqlalchemy import text
+                db.session.execute(text("SELECT 1"))
                 db_status = "healthy"
             else:
                 db_status = "no database configured"
