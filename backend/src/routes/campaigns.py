@@ -1,11 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
+from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, time
 import logging
 
-from ..models.client import Client
-from ..models.campaign import Campaign, CampaignExecution, CampaignScheduler, db
-from ..services.lead_generator import LeadGenerator
+from models.client import Client
+from models.campaign import Campaign, CampaignExecution, CampaignScheduler, db
+from services.lead_generator import LeadGenerator
 
 campaigns_bp = Blueprint('campaigns', __name__)
 logger = logging.getLogger(__name__)

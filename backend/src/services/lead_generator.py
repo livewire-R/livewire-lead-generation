@@ -5,11 +5,11 @@ import asyncio
 import concurrent.futures
 from dataclasses import dataclass
 
-from src.services.apollo_client import get_apollo_client, ApolloAPIError
-from src.services.hunter_client import get_hunter_client, HunterAPIError
-from src.services.linkedin_client import get_linkedin_client, LinkedInAPIError
-from src.models.lead import Lead, Campaign, db
-from src.models.client import Client
+from services.apollo_client import get_apollo_client, ApolloAPIError
+from services.hunter_client import get_hunter_client, HunterAPIError
+from services.linkedin_client import get_linkedin_client, LinkedInAPIError
+from models.lead import Lead, Campaign, db
+from models.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -446,6 +446,12 @@ class LeadGenerationService:
 # Global service instance
 lead_generation_service = None
 
-# Global s
-lead_g=None
-Lead=L
+def get_lead_generation_service() -> LeadGenerationService:
+    """Get or create lead generation service instance"""
+    global lead_generation_service
+    if lead_generation_service is None:
+        lead_generation_service = LeadGenerationService()
+    return lead_generation_service
+
+# Alias for backward compatibility with existing imports
+LeadGenerator = LeadGenerationService

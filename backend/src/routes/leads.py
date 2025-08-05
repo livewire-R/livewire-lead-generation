@@ -5,9 +5,9 @@ from functools import wraps
 import logging
 from datetime import datetime
 
-from src.models.lead import Lead, Campaign, db
-from src.models.client import Client
-from src.services.lead_generator import get_lead_generation_service, LeadCriteria
+from models.lead import Lead, Campaign, db
+from models.client import Client
+from services.lead_generator import get_lead_generation_service, LeadCriteria
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ import jwt
 from datetime import datetime, timedelta
 import logging
 
-from src.models.client import Client, AdminUser, db
+from models.client import Client, AdminUser, db
 
 logger = logging.getLogger(__name__)
 
