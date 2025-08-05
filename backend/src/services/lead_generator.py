@@ -452,6 +452,6 @@ def get_lead_generation_service() -> LeadGenerationService:
     if lead_generation_service is None:
 
 # Alias for backward compatibility with existing imports
-LeadGenerator = LeadGenerationService
+    return lead_generation_service
     return lead_generation_service
 
