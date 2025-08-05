@@ -5,18 +5,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Zap, 
   Mail, 
   Lock, 
   ArrowLeft, 
-  User, 
-  Settings,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react'
 
 const LoginPage = () => {
@@ -24,54 +22,47 @@ const LoginPage = () => {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const navigate = useNavigate()
-
-  const handleQuickLogin = (type) => {
-    if (type === 'demo') {
-      setEmail('demo@livewire.com')
-      setPassword('demo123')
-    } else if (type === 'admin') {
-      setEmail('admin@livewire.com')
-      setPassword('admin123')
-    }
-    setError('')
-    setSuccess(`${type === 'demo' ? 'Demo client' : 'Admin'} credentials loaded. Click "Login to Dashboard" to continue.`)
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-    setSuccess('')
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Production authentication API call
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
 
-      // Demo authentication
-      if (email === 'demo@livewire.com' && password === 'demo123') {
-        setSuccess('Login successful! Redirecting to dashboard...')
-        setTimeout(() => {
-          navigate('/dashboard')
-        }, 1000)
-      } else if (email === 'admin@livewire.com' && password === 'admin123') {
-        setSuccess('Admin login successful! Redirecting to admin panel...')
-        setTimeout(() => {
+      if (response.ok) {
+        const data = await response.json()
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        
+        // Redirect based on user role
+        if (data.user.role === 'admin') {
           navigate('/admin')
-        }, 1000)
+        } else {
+          navigate('/dashboard')
+        }
       } else {
-        setError('Invalid credentials. Try demo@livewire.com / demo123 or admin@livewire.com / admin123')
+        const errorData = await response.json()
+        setError(errorData.message || 'Invalid credentials. Please check your email and password.')
       }
     } catch (err) {
-      setError('Login failed. Please try again.')
+      setError('Connection error. Please check your internet connection and try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -80,79 +71,50 @@ const LoginPage = () => {
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center space-x-2 mb-6 text-slate-600 hover:text-slate-900 transition-colors">
+            <Link to="/" className="inline-flex items-center space-x-2 mb-6 text-gray-600 hover:text-gray-900 transition-colors">
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Home</span>
             </Link>
             
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-xl">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-3 rounded-xl">
                 <Zap className="h-8 w-8 text-white" />
               </div>
-              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                LiveWire
+              <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                SalesFuel.au
               </span>
             </div>
             
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome back</h1>
-            <p className="text-slate-600">Access your lead generation dashboard</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h1>
+            <p className="text-gray-600">Access your lead generation dashboard</p>
           </div>
 
-          {/* Demo Credentials Card */}
-          <Card className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg text-green-800 flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Demo Access Available
-              </CardTitle>
-              <CardDescription className="text-green-700">
-                Use these credentials to explore the platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center space-y-2 border-green-200 hover:bg-green-100"
-                  onClick={() => handleQuickLogin('demo')}
-                >
-                  <User className="h-5 w-5 text-green-600" />
-                  <div className="text-center">
-                    <div className="font-medium text-green-800">Demo Client</div>
-                    <div className="text-xs text-green-600">demo@livewire.com</div>
-                    <div className="text-xs text-green-600">demo123</div>
-                  </div>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center space-y-2 border-green-200 hover:bg-green-100"
-                  onClick={() => handleQuickLogin('admin')}
-                >
-                  <Settings className="h-5 w-5 text-green-600" />
-                  <div className="text-center">
-                    <div className="font-medium text-green-800">Admin Panel</div>
-                    <div className="text-xs text-green-600">admin@livewire.com</div>
-                    <div className="text-xs text-green-600">admin123</div>
-                  </div>
-                </Button>
+          {/* Security Notice */}
+          <Card className="mb-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-3 text-slate-300">
+                <Shield className="h-5 w-5 text-yellow-400" />
+                <div>
+                  <p className="text-sm font-medium">Secure Login</p>
+                  <p className="text-xs text-slate-400">Your data is protected with enterprise-grade security</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Login Form */}
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <Card className="shadow-2xl border-slate-700 bg-slate-800/50 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Sign in to your account</CardTitle>
-              <CardDescription>
-                Or use the demo credentials above
+              <CardTitle className="text-xl text-white">Sign in to your account</CardTitle>
+              <CardDescription className="text-slate-400">
+                Enter your credentials to access your SalesFuel dashboard
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                  <Label htmlFor="email" className="text-sm font-medium text-slate-300">
                     Email Address
                   </Label>
                   <div className="relative">
@@ -163,14 +125,14 @@ const LoginPage = () => {
                       placeholder="Enter your email address"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                      className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-yellow-500 focus:ring-yellow-500"
                       required
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-slate-700">
+                  <Label htmlFor="password" className="text-sm font-medium text-slate-300">
                     Password
                   </Label>
                   <div className="relative">
@@ -181,33 +143,24 @@ const LoginPage = () => {
                       placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-12 bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                      className="pl-10 h-12 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-yellow-500 focus:ring-yellow-500"
                       required
                     />
                   </div>
                 </div>
 
                 {error && (
-                  <Alert className="border-red-200 bg-red-50">
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                    <AlertDescription className="text-red-700">
+                  <Alert className="border-red-500/50 bg-red-500/10">
+                    <AlertCircle className="h-4 w-4 text-red-400" />
+                    <AlertDescription className="text-red-300">
                       {error}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {success && (
-                  <Alert className="border-green-200 bg-green-50">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700">
-                      {success}
                     </AlertDescription>
                   </Alert>
                 )}
                 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+                  className="w-full h-12 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-slate-900 font-medium"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -218,7 +171,7 @@ const LoginPage = () => {
                   ) : (
                     <>
                       <Zap className="h-4 w-4 mr-2" />
-                      Login to Dashboard
+                      Access Dashboard
                     </>
                   )}
                 </Button>
@@ -227,20 +180,20 @@ const LoginPage = () => {
               <div className="mt-6 text-center space-y-4">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200" />
+                    <div className="w-full border-t border-slate-600" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-slate-500">Need help?</span>
+                    <span className="px-2 bg-slate-800 text-slate-400">Need assistance?</span>
                   </div>
                 </div>
                 
                 <div className="flex justify-center space-x-4 text-sm">
-                  <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                    Forgot password?
+                  <a href="mailto:support@salesfuel.au" className="text-yellow-400 hover:text-yellow-300 font-medium">
+                    Contact Support
                   </a>
-                  <span className="text-slate-300">•</span>
-                  <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
-                    Create account
+                  <span className="text-slate-600">•</span>
+                  <a href="mailto:admin@salesfuel.au" className="text-yellow-400 hover:text-yellow-300 font-medium">
+                    Request Access
                   </a>
                 </div>
               </div>
@@ -248,12 +201,15 @@ const LoginPage = () => {
           </Card>
 
           {/* Footer */}
-          <div className="mt-8 text-center text-sm text-slate-500">
+          <div className="mt-8 text-center text-sm text-slate-400">
             <p>
               By signing in, you agree to our{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">Terms of Service</a>
+              <a href="#" className="text-yellow-400 hover:text-yellow-300">Terms of Service</a>
               {' '}and{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">Privacy Policy</a>
+              <a href="#" className="text-yellow-400 hover:text-yellow-300">Privacy Policy</a>
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              © 2025 SalesFuel.au - Professional Lead Generation Platform
             </p>
           </div>
         </motion.div>

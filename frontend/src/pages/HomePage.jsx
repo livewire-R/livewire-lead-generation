@@ -12,58 +12,58 @@ const HomePage = () => {
   const features = [
     {
       icon: Target,
-      title: 'Automated Lead Generation',
-      description: 'Set your schedule and let LEED.io automatically generate qualified leads for your business.'
+      title: 'CSV Data Import/Export',
+      description: 'Import your existing contact lists and export qualified leads with our intelligent CSV processing system.'
     },
     {
       icon: Clock,
-      title: 'Time-Based Campaigns',
-      description: 'Choose from daily, weekly, or monthly prospecting schedules that fit your workflow.'
+      title: 'Automated Campaigns',
+      description: 'Set up automated lead generation campaigns that run 24/7 to continuously grow your pipeline.'
     },
     {
       icon: Users,
       title: 'Australian B2B Focus',
-      description: 'Optimized for Australian consultants, coaches, and professional service providers.'
+      description: 'Optimized for Australian businesses with local market insights and compliance standards.'
     },
     {
       icon: BarChart3,
-      title: 'AI-Powered Scoring',
-      description: 'Advanced algorithms score and rank leads based on your ideal customer profile.'
+      title: 'AI-Powered Analytics',
+      description: 'Advanced algorithms analyze performance and optimize campaigns for maximum ROI and lead quality.'
     },
     {
       icon: Shield,
-      title: 'Privacy Compliant',
-      description: 'Full compliance with Australian Privacy Act and GDPR regulations.'
+      title: 'Enterprise Security',
+      description: 'Bank-level security with encryption, compliance, and data protection for Australian businesses.'
     },
     {
       icon: Zap,
-      title: 'API Integrations',
-      description: 'Seamlessly connects with Apollo.io, Hunter.io, and LinkedIn for comprehensive data.'
+      title: 'CRM Integrations',
+      description: 'Seamlessly connects with popular CRMs and tools for streamlined lead management workflows.'
     }
   ];
 
   const stats = [
-    { number: '10,000+', label: 'Leads Generated' },
-    { number: '500+', label: 'Active Users' },
-    { number: '95%', label: 'Success Rate' },
+    { number: '50,000+', label: 'Leads Generated' },
+    { number: '500+', label: 'Active Clients' },
+    { number: '94%', label: 'Accuracy Rate' },
     { number: '24/7', label: 'Automation' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-2 rounded-lg">
                 <Zap className="h-6 w-6 text-white" />
               </div>
               <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  LEED.io
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+                  SalesFuel.au
                 </span>
-                <p className="text-xs text-gray-500">Automated Lead Generation</p>
+                <p className="text-xs text-gray-500">Professional Lead Generation</p>
               </div>
             </div>
             
@@ -88,24 +88,24 @@ const HomePage = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
               <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6">
-                Automated Lead Generation{' '}
+                Professional Lead Generation{' '}
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  for Australian Consultants
+                  for Australian Businesses
                 </span>
               </h1>
               
               <p className="text-xl text-slate-600 leading-relaxed mb-8">
-                Set your schedule, define your ideal prospects, and let LEED.io automatically generate qualified leads while you focus on closing deals.
+                Scale your business with AI-powered lead generation. Import your data, create targeted campaigns, and export qualified leads with enterprise-grade tools.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link to="/onboarding" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center">
-                  Start Free Trial
+                <Link to="/login" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center">
+                  Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
-                <Link to="/login" className="border-2 border-slate-300 text-slate-700 px-8 py-4 rounded-lg font-semibold hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center">
-                  Demo Login
-                </Link>
+                <a href="#features" className="border-2 border-slate-300 text-slate-700 px-8 py-4 rounded-lg font-semibold hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center">
+                  Learn More
+                </a>
               </div>
               
               <div className="flex items-center space-x-6 text-sm text-slate-600">
@@ -127,33 +127,33 @@ const HomePage = () => {
             <div className={`transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
               <div className="bg-white rounded-2xl shadow-2xl p-8 border border-slate-200">
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Live Dashboard Preview</h3>
-                  <p className="text-slate-600">See your automated campaigns in action</p>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-2">SalesFuel Dashboard</h3>
+                  <p className="text-slate-600">Professional lead generation analytics</p>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                      <span className="font-medium text-green-800">Daily Campaign</span>
+                      <span className="font-medium text-green-800">Active Campaigns</span>
                     </div>
-                    <span className="text-green-600 font-semibold">47 leads today</span>
+                    <span className="text-green-600 font-semibold">2,847 leads generated</span>
                   </div>
                   
                   <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                      <span className="font-medium text-blue-800">Weekly Campaign</span>
+                      <span className="font-medium text-blue-800">Data Processing</span>
                     </div>
-                    <span className="text-blue-600 font-semibold">Next run: Tomorrow 9AM</span>
+                    <span className="text-blue-600 font-semibold">CSV imports: 94% accuracy</span>
                   </div>
                   
                   <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
-                      <span className="font-medium text-purple-800">Monthly Campaign</span>
+                      <span className="font-medium text-purple-800">Export Ready</span>
                     </div>
-                    <span className="text-purple-600 font-semibold">234 leads this month</span>
+                    <span className="text-purple-600 font-semibold">1,247 qualified leads</span>
                   </div>
                 </div>
               </div>
@@ -181,10 +181,10 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Powerful Features for Modern Consultants
+              Enterprise-Grade Lead Generation Platform
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Everything you need to automate your lead generation and scale your consulting business
+              Everything you need to scale your Australian business with qualified leads and data-driven insights
             </p>
           </div>
           
@@ -209,19 +209,19 @@ const HomePage = () => {
       <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to Automate Your Lead Generation?
+            Ready to Scale Your Lead Generation?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join hundreds of Australian consultants who are scaling their businesses with LEED.io
+            Join hundreds of Australian businesses using SalesFuel.au to generate qualified leads and grow their revenue
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/onboarding" className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold hover:bg-blue-50 transition-all flex items-center justify-center">
-              Start Your Free Trial
+            <Link to="/login" className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold hover:bg-blue-50 transition-all flex items-center justify-center">
+              Start Your Campaign Today
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
-            <Link to="/login" className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-all flex items-center justify-center">
-              Demo: demo@leed.io / demo123
-            </Link>
+            <a href="#features" className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-all flex items-center justify-center">
+              Learn More About Features
+            </a>
           </div>
         </div>
       </section>
@@ -236,16 +236,16 @@ const HomePage = () => {
               </div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  LEED.io
+                  SalesFuel.au
                 </span>
                 <p className="text-gray-400 text-sm">
-                  AI-powered lead generation for Australian B2B consultants
+                  Professional lead generation for Australian businesses
                 </p>
               </div>
             </div>
             
             <div className="flex items-center space-x-6 text-gray-400">
-              <span>© 2025 LEED.io. All rights reserved.</span>
+              <span>© 2025 SalesFuel.au. All rights reserved.</span>
               <div className="flex items-center space-x-1">
                 <Star className="h-4 w-4 text-yellow-400 fill-current" />
                 <span className="text-sm">Made in Australia</span>
