@@ -54,17 +54,18 @@ class ApolloAPIClient:
             raise ApolloAPIError(f"Daily quota of {self.daily_quota} requests exceeded")
     
     def _make_request(self, endpoint: str, payload: Dict) -> Dict:
-        """Make authenticated request to Apollo API"""
-        self._check_quota()
-        self._rate_limit()
-        
+        """Make a request to Apollo API"""
         url = f"{self.base_url}/{endpoint}"
-        payload['api_key'] = self.api_key
+        
+        # Apollo.io requires API key in X-Api-Key header, not in JSON body
+        headers = {
+            'X-Api-Key': self.api_key,
+            'Content-Type': 'application/json'
+        }
         
         try:
             logger.info(f"Making Apollo API request to {endpoint}")
-            response = self.session.post(url, json=payload, timeout=30)
-            
+            response = self.session.post(url, json=payload, headers=headers, timeout=30)        
             # Increment request counter
             self.requests_made_today += 1
             
