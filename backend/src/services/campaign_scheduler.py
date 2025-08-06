@@ -1,13 +1,13 @@
-import logging
 import time
 import threading
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 import schedule
 
-from ..models.campaign import Campaign, CampaignExecution, CampaignScheduler, db
-from ..models.client import Client
-from .lead_generator import LeadGenerator
+from models.campaign import Campaign, CampaignExecution, CampaignScheduler, db
+from models.client import Client
+from services.lead_generator import LeadGenerator
 
 logger = logging.getLogger(__name__)
 
