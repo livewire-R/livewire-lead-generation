@@ -26,7 +26,6 @@ COPY src ./src
 
 # Environment configuration
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
 
 EXPOSE 8080
 
