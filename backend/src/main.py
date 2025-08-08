@@ -43,8 +43,8 @@ def create_app():
     }
     
     # CORS configuration
-    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000" ).split(",")
-    CORS(app, origins=cors_origins, supports_credentials=True)
+    "https://www.salesfuel.com.au,https://salesfuel.com.au,https://amusing-surprise-production-ea6c.up.railway.app" = os.getenv(""https://www.salesfuel.com.au,https://salesfuel.com.au,https://amusing-surprise-production-ea6c.up.railway.app"", "http://localhost:5173,http://localhost:3000" ).split(",")
+    CORS(app, origins="https://www.salesfuel.com.au,https://salesfuel.com.au,https://amusing-surprise-production-ea6c.up.railway.app", supports_credentials=True)
     
     # Initialize database
     from models.client import db
